@@ -1397,6 +1397,40 @@ class ChoiceTypeTest extends \Symfony\Component\Form\Test\TypeTestCase
         $this->assertTrue($form->isSynchronized());
     }
 
+    public function testSetDataSingleNonExpandedObjectChoicesAcceptsObject()
+    {
+        $form = $this->factory->create('choice', null, array(
+            'multiple' => false,
+            'expanded' => false,
+            'choices' => $this->objectChoices,
+            'choices_as_values' => true,
+            'choice_label' => 'name',
+            'choice_value' => 'id',
+        ));
+
+        $form->setData($this->objectChoices[1]);
+        $this->assertEquals($this->objectChoices[1], $form->getData());
+        $this->assertEquals('2', $form->getViewData());
+        $this->assertTrue($form->isSynchronized());
+    }
+
+    public function testSetDataSingleExpandedObjectChoicesAcceptsObject()
+    {
+        $form = $this->factory->create('choice', null, array(
+            'multiple' => false,
+            'expanded' => true,
+            'choices' => $this->objectChoices,
+            'choices_as_values' => true,
+            'choice_label' => 'name',
+            'choice_value' => 'id',
+        ));
+
+        $form->setData($this->objectChoices[1]);
+        $this->assertEquals($this->objectChoices[1], $form->getData());
+        $this->assertEquals('2', $form->getViewData());
+        $this->assertTrue($form->isSynchronized());
+    }
+
     public function testPassRequiredToView()
     {
         $form = $this->factory->create('choice', null, array(
