@@ -307,10 +307,17 @@ class DefinitionTest extends TestCase
     {
         $def = new Definition('stdClass');
         $this->assertFalse($def->isAutowired());
+
         $def->setAutowired(true);
         $this->assertTrue($def->isAutowired());
+
+        $def->setAutowired(false);
+        $this->assertFalse($def->isAutowired());
     }
 
+    /**
+     * @group legacy
+     */
     public function testTypes()
     {
         $def = new Definition('stdClass');

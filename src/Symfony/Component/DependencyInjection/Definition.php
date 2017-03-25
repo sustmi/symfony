@@ -21,6 +21,9 @@ use Symfony\Component\DependencyInjection\Exception\OutOfBoundsException;
  */
 class Definition
 {
+    const AUTOWIRE_BY_TYPE = 1;
+    const AUTOWIRE_BY_ID = 2;
+
     private $class;
     private $file;
     private $factory;
@@ -29,6 +32,7 @@ class Definition
     private $deprecationTemplate = 'The "%service_id%" service is deprecated. You should stop using it, as it will soon be removed.';
     private $properties = array();
     private $calls = array();
+    private $instanceof = array();
     private $configurator;
     private $tags = array();
     private $public = true;
@@ -36,7 +40,7 @@ class Definition
     private $abstract = false;
     private $lazy = false;
     private $decoratedService;
-    private $autowired = false;
+    private $autowired = 0;
     private $autowiringTypes = array();
 
     protected $arguments;
@@ -189,8 +193,8 @@ class Definition
     /**
      * Sets a specific argument.
      *
-     * @param int   $index
-     * @param mixed $argument
+     * @param int|string $index
+     * @param mixed      $argument
      *
      * @return $this
      *
@@ -202,8 +206,12 @@ class Definition
             throw new OutOfBoundsException('Cannot replace arguments if none have been configured yet.');
         }
 
-        if ($index < 0 || $index > count($this->arguments) - 1) {
+        if (is_int($index) && ($index < 0 || $index > count($this->arguments) - 1)) {
             throw new OutOfBoundsException(sprintf('The index "%d" is not in the range [0, %d].', $index, count($this->arguments) - 1));
+        }
+
+        if (!array_key_exists($index, $this->arguments)) {
+            throw new OutOfBoundsException(sprintf('The argument "%s" doesn\'t exist.', $index));
         }
 
         $this->arguments[$index] = $argument;
@@ -224,7 +232,7 @@ class Definition
     /**
      * Gets an argument to pass to the service constructor/factory method.
      *
-     * @param int $index
+     * @param int|string $index
      *
      * @return mixed The argument value
      *
@@ -232,8 +240,8 @@ class Definition
      */
     public function getArgument($index)
     {
-        if ($index < 0 || $index > count($this->arguments) - 1) {
-            throw new OutOfBoundsException(sprintf('The index "%d" is not in the range [0, %d].', $index, count($this->arguments) - 1));
+        if (!array_key_exists($index, $this->arguments)) {
+            throw new OutOfBoundsException(sprintf('The argument "%s" doesn\'t exist.', $index));
         }
 
         return $this->arguments[$index];
@@ -321,6 +329,32 @@ class Definition
     public function getMethodCalls()
     {
         return $this->calls;
+    }
+
+    /**
+     * Sets the definition templates to conditionally apply on the current definition, keyed by parent interface/class.
+     *
+     * @param $instanceof ChildDefinition[]
+     *
+     * @experimental in version 3.3
+     */
+    public function setInstanceofConditionals(array $instanceof)
+    {
+        $this->instanceof = $instanceof;
+
+        return $this;
+    }
+
+    /**
+     * Gets the definition templates to conditionally apply on the current definition, keyed by parent interface/class.
+     *
+     * @return ChildDefinition[]
+     *
+     * @experimental in version 3.3
+     */
+    public function getInstanceofConditionals()
+    {
+        return $this->instanceof;
     }
 
     /**
@@ -647,9 +681,13 @@ class Definition
      * @param string[] $types
      *
      * @return $this
+     *
+     * @deprecated since version 3.3, to be removed in 4.0.
      */
     public function setAutowiringTypes(array $types)
     {
+        @trigger_error('Autowiring-types are deprecated since Symfony 3.3 and will be removed in 4.0. Use aliases instead.', E_USER_DEPRECATED);
+
         $this->autowiringTypes = array();
 
         foreach ($types as $type) {
@@ -666,18 +704,33 @@ class Definition
      */
     public function isAutowired()
     {
+        return (bool) $this->autowired;
+    }
+
+    /**
+     * Gets the autowiring mode.
+     *
+     * @return int
+     */
+    public function getAutowired()
+    {
         return $this->autowired;
     }
 
     /**
      * Sets autowired.
      *
-     * @param bool $autowired
+     * @param bool|int $autowired
      *
      * @return $this
      */
     public function setAutowired($autowired)
     {
+        $autowired = (int) $autowired;
+
+        if ($autowired && self::AUTOWIRE_BY_TYPE !== $autowired && self::AUTOWIRE_BY_ID !== $autowired) {
+            throw new InvalidArgumentException(sprintf('Invalid argument: Definition::AUTOWIRE_BY_TYPE (%d) or Definition::AUTOWIRE_BY_ID (%d) expected, %d given.', self::AUTOWIRE_BY_TYPE, self::AUTOWIRE_BY_ID, $autowired));
+        }
         $this->autowired = $autowired;
 
         return $this;
@@ -687,9 +740,15 @@ class Definition
      * Gets autowiring types that will default to this definition.
      *
      * @return string[]
+     *
+     * @deprecated since version 3.3, to be removed in 4.0.
      */
-    public function getAutowiringTypes()
+    public function getAutowiringTypes(/*$triggerDeprecation = true*/)
     {
+        if (1 > func_num_args() || func_get_arg(0)) {
+            @trigger_error('Autowiring-types are deprecated since Symfony 3.3 and will be removed in 4.0. Use aliases instead.', E_USER_DEPRECATED);
+        }
+
         return array_keys($this->autowiringTypes);
     }
 
@@ -699,9 +758,13 @@ class Definition
      * @param string $type
      *
      * @return $this
+     *
+     * @deprecated since version 3.3, to be removed in 4.0.
      */
     public function addAutowiringType($type)
     {
+        @trigger_error(sprintf('Autowiring-types are deprecated since Symfony 3.3 and will be removed in 4.0. Use aliases instead for "%s".', $type), E_USER_DEPRECATED);
+
         $this->autowiringTypes[$type] = true;
 
         return $this;
@@ -713,9 +776,13 @@ class Definition
      * @param string $type
      *
      * @return $this
+     *
+     * @deprecated since version 3.3, to be removed in 4.0.
      */
     public function removeAutowiringType($type)
     {
+        @trigger_error(sprintf('Autowiring-types are deprecated since Symfony 3.3 and will be removed in 4.0. Use aliases instead for "%s".', $type), E_USER_DEPRECATED);
+
         unset($this->autowiringTypes[$type]);
 
         return $this;
@@ -727,9 +794,13 @@ class Definition
      * @param string $type
      *
      * @return bool
+     *
+     * @deprecated since version 3.3, to be removed in 4.0.
      */
     public function hasAutowiringType($type)
     {
+        @trigger_error(sprintf('Autowiring-types are deprecated since Symfony 3.3 and will be removed in 4.0. Use aliases instead for "%s".', $type), E_USER_DEPRECATED);
+
         return isset($this->autowiringTypes[$type]);
     }
 }

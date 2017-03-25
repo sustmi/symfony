@@ -125,7 +125,7 @@ EOF;
                     // TODO
                 } else {
                     eval('$expected = '.trim($test['php']).';');
-                    $this->assertSame($expected, $this->parser->parse($this->dumper->dump($expected, 10)), $test['test']);
+                    $this->assertSame($expected, $this->parser->parse($this->dumper->dump($expected, 10), Yaml::PARSE_KEYS_AS_STRINGS), $test['test']);
                 }
             }
         }
@@ -245,6 +245,24 @@ EOF;
     public function testObjectSupportDisabledWithExceptionsPassingTrue()
     {
         $this->dumper->dump(array('foo' => new A(), 'bar' => 1), 0, 0, true);
+    }
+
+    public function testEmptyArray()
+    {
+        $dump = $this->dumper->dump(array());
+        $this->assertEquals('{  }', $dump);
+
+        $dump = $this->dumper->dump(array(), 0, 0, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
+        $this->assertEquals('[]', $dump);
+
+        $dump = $this->dumper->dump(array(), 9, 0, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
+        $this->assertEquals('[]', $dump);
+
+        $dump = $this->dumper->dump(new \ArrayObject(), 0, 0, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_OBJECT_AS_MAP);
+        $this->assertEquals('{  }', $dump);
+
+        $dump = $this->dumper->dump(new \stdClass(), 0, 0, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_OBJECT_AS_MAP);
+        $this->assertEquals('{  }', $dump);
     }
 
     /**
